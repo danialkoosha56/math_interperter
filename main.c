@@ -1,20 +1,35 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+
+typedef enum
+{
+    PLUS,
+    MINUS,
+    MULTIPLICATION,
+    DEVIDE,
+    EXPONENTE,
+    EQUAL,
+    OPEN_PARANTES,
+    CLOSE_PARANTES,
+}operatorType_e;
 
 typedef struct _opertator
 {
-    uint8_t operation;
-    int endAdress;
+    char operation;
+    char *Address;
 }operator;
 
-int calc(uint8_t *);
-void findOperation(uint8_t *str, operator *op);
-void findValue(uint8_t *str, int *value);
-// 1*2*4*8=
+int calc(char *);
+void findOperation(char *str, operator *op);
+void findValue(char *str, int *value);
+int _pow(int base, int exponent);
+
 void main()
 {
-    uint8_t string[100];
+    char string[100];
     int result;
     printf("write your math porblem:");
     scanf("%s", string);
@@ -23,10 +38,11 @@ void main()
     return;
 }
 
+//(12+14(17-3)2-2)/2=
 //(12+14*(17-3)*2-2)/2=
-int calc(uint8_t * str)
+int calc(char * str)
 {
-    uint8_t *dumm_buff;
+    char *dumm_buff;
     int buff=0;
     operator op;
     int firstValue;
@@ -34,23 +50,31 @@ int calc(uint8_t * str)
 
     findOperation(str, &op);
     findValue(str, &firstValue);
-    while( (op.operation == '*') || (op.operation == '/'))
+    while( op.operation == EXPONENTE)
+    {
+        findValue(op.Address+1, &afterValue);
+        firstValue = _pow(firstValue, afterValue);
+        str = op.Address+1;
+        memset(&op, 0, sizeof(operator));
+        findOperation(str, &op);
+    }
+    while( (op.operation == MULTIPLICATION) || (op.operation == DEVIDE))
     {
         switch (op.operation)
         {
-        case '*':
-            findValue(str+ op.endAdress+1, &afterValue);
+        case MULTIPLICATION:
+            findValue(op.Address+1, &afterValue);
             firstValue = firstValue * afterValue;
-            str += op.endAdress+1;
-            op = (operator){0};
+            str = op.Address+1;
+            memset(&op, 0, sizeof(operator));
             findOperation(str, &op);
             break;
 
-        case '/':
-            findValue(str+ op.endAdress+1, &afterValue);
+        case DEVIDE:
+            findValue(op.Address+1, &afterValue);
             firstValue = firstValue / afterValue;
-            str += op.endAdress+1;
-            op = (operator){0};
+            str = op.Address+1;
+            memset(&op, 0, sizeof(operator));
             findOperation(str, &op);
         
         default:
@@ -60,18 +84,18 @@ int calc(uint8_t * str)
     
     switch (op.operation)
     {
-    case '+':
-        buff = calc(str + op.endAdress + 1);
+    case PLUS:
+        buff = calc(op.Address + 1);
         return firstValue + buff;
         break;
-     case '-':
-        buff = calc(str + op.endAdress + 1);
+     case MINUS:
+        buff = calc(op.Address + 1);
         return firstValue - buff;
         break;
-    case ')':
+    case CLOSE_PARANTES:
         return firstValue;
         break;
-    case '=':
+    case EQUAL:
         return firstValue;
         break;
     
@@ -81,17 +105,15 @@ int calc(uint8_t * str)
 
 }
 
-void findOperation(uint8_t *str, operator *op)
+void findOperation(char *str, operator *op)
 {
     int start;
     int end;
-    int cnt=0;
     int parantes=0;
     if( *str == '(')
     {
         parantes++;
         str++;
-        cnt++;
         while ( parantes != 0)
         {
             if (*str == '(')
@@ -103,24 +125,62 @@ void findOperation(uint8_t *str, operator *op)
                 parantes--;
             }
             str++;
-            cnt++;
         }
-        op->operation = *str;
-        op->endAdress = cnt;
+
+        if ( isdigit(*str))
+        {
+            str--;
+            op->Address = str;
+            op->operation = MULTIPLICATION;
+            return;
+        }
     }
     else
     {
-        while ( '0'<=*str && *str<='9')
+        while ( isdigit(*str))
         {
             str++;
-            cnt++;
         }
-        op->operation = *str;
-        op->endAdress = cnt;
+    }
+
+    op->Address = str;
+    switch (*str)
+    {
+    case '+':
+        op->operation = PLUS;
+        break;
+    case '-':
+        op->operation = MINUS;
+        break;
+    case '*':
+        op->operation = MULTIPLICATION;
+        break;
+    case '/':
+        op->operation = DEVIDE;
+        break;
+    case '(':
+        op->operation = MULTIPLICATION;
+        --op->Address;
+        break;
+    case ')':
+        op->operation = CLOSE_PARANTES;
+        break;
+    case '=':
+        op->operation = EQUAL;
+        break;
+    case '^':
+        op->operation = EXPONENTE ;
+        break;
+    case '\0':
+        op->operation = EQUAL;
+        break;
+    
+    default:
+        break;
     }
 }
 
-void findValue(uint8_t *str, int *value)
+void findValue(char *str, int *value)
 {
     if( *str == '(')
     {
@@ -130,4 +190,13 @@ void findValue(uint8_t *str, int *value)
     {
         *value = atoi(str);
     }
+}
+
+int _pow(int base, int exponent)
+{
+    if (base == 0)
+        return 0;
+    if( exponent == 0)
+        return 1;
+    return _pow(base,exponent-1) * base;
 }
